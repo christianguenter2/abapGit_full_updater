@@ -27,7 +27,8 @@ CLASS controller DEFINITION.
   PUBLIC SECTION.
     CLASS-METHODS:
       run,
-      at_selection_screen_output.
+      at_selection_screen_output,
+      on_f4_artifact_id.
 
   PRIVATE SECTION.
     CLASS-DATA:
@@ -309,14 +310,14 @@ CLASS controller IMPLEMENTATION.
         zcx_abapgit_exception=>raise_with_text( error ).
     ENDTRY.
 
-    result = fetch_from_url_auth( zip_url ).
+    result = get_source_from_zip( fetch_from_url_auth( zip_url ) ).
 
   ENDMETHOD.
 
 
   METHOD fetch_from_url_auth.
 
-    DATA(http_client) = zcl_abapgit_exit=>get_instance( )->create_http_client( url ).
+    DATA(http_client) = zcl_abapgit_exit=>get_instance( )->create_http_client( i_url ).
 
     http_client->request->set_header_field(
         name  = '~request_uri'
@@ -359,10 +360,74 @@ CLASS controller IMPLEMENTATION.
       zcx_abapgit_exception=>raise( |HTTP status code { code }. Message: { reason }| ).
     ENDIF.
 
-    DATA(raw_json) = http_client->response->get_data( ).
+    result = http_client->response->get_data( ).
+
+  ENDMETHOD.
+
+
+  METHOD on_f4_artifact_id.
+
+    TYPES:
+      BEGIN OF t_artifact,
+        id         TYPE string,
+        created_at TYPE string,
+        branch     TYPE string,
+      END OF t_artifact,
+      tt_artifact TYPE STANDARD TABLE OF t_artifact
+                       WITH NON-UNIQUE DEFAULT KEY.
+
+    DATA:
+      artifacts TYPE tt_artifact,
+      artifact  LIKE LINE OF artifacts,
+      selected  LIKE artifacts.
+
+
+    DATA(url) = |https://api.github.com/repos/abapGit/abapGit/actions/artifacts|.
+
+    TRY.
+        DATA(json) = zcl_ajson=>parse( zcl_abapgit_convert=>xstring_to_string_utf8( fetch_from_url_auth( url ) ) ).
+
+        DATA(json_artifacts) = json->members( '/artifacts' ).
+
+        LOOP AT json_artifacts ASSIGNING FIELD-SYMBOL(<artifact>).
+
+          CLEAR: artifact.
+
+          IF json->get( |/artifacts/{ <artifact> }/name| ) NS 'zabapgit_standalone'.
+            CONTINUE.
+          ENDIF.
+
+          artifact-id = json->get( |/artifacts/{ <artifact> }/id| ).
+          artifact-created_at = json->get( |/artifacts/{ <artifact> }/created_at| ).
+          artifact-branch = json->get( |/artifacts/{ <artifact> }/workflow_run/head_branch| ).
+
+          INSERT artifact INTO TABLE artifacts.
+
+        ENDLOOP.
+
+        SORT artifacts BY branch created_at DESCENDING.
+        DELETE ADJACENT DUPLICATES FROM artifacts COMPARING branch.
+
+        zcl_abapgit_ui_factory=>get_popups( )->popup_to_select_from_list(
+          EXPORTING
+            it_list               = artifacts
+            iv_selection_mode     = if_salv_c_selection_mode=>single
+            it_columns_to_display = VALUE #( ( name = |ID| ) ( name = |CREATED_AT| ) ( name = |BRANCH| ) )
+          IMPORTING
+            et_list               = selected ).
+
+        art_id = VALUE #( selected[ 1 ]-id DEFAULT art_id ).
+
+      CATCH zcx_ajson_error zcx_abapgit_exception INTO DATA(error).
+        MESSAGE error TYPE 'S' DISPLAY LIKE 'E'.
+    ENDTRY.
+
   ENDMETHOD.
 
 ENDCLASS.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR art_id.
+  controller=>on_f4_artifact_id( ).
 
 AT SELECTION-SCREEN OUTPUT.
   controller=>at_selection_screen_output( ).
