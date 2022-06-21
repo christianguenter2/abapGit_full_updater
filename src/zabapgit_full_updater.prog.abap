@@ -268,21 +268,21 @@ CLASS controller IMPLEMENTATION.
 
   METHOD at_selection_screen_output.
 
-    LOOP AT SCREEN.
+    LOOP AT SCREEN INTO DATA(s).
 
       CASE abap_true.
         WHEN text.
 
-          IF screen-name = 'ART_ID'.
-            screen-input = 0.
-            MODIFY SCREEN.
+          IF s-name = 'ART_ID'.
+            s-input = 0.
+            MODIFY SCREEN FROM s.
           ENDIF.
 
         WHEN artifact.
 
-          IF screen-name = 'URL'.
-            screen-input = 0.
-            MODIFY SCREEN.
+          IF s-name = 'URL'.
+            s-input = 0.
+            MODIFY SCREEN FROM s.
           ENDIF.
 
       ENDCASE.
@@ -304,9 +304,9 @@ CLASS controller IMPLEMENTATION.
     DATA(json) = zcl_abapgit_convert=>xstring_to_string_utf8( fetch_from_url_auth( url ) ).
 
     TRY.
-        DATA(zip_url) = zcl_ajson=>parse( json )->get( '/archive_download_url' ).
+        DATA(zip_url) = zcl_abapgit_ajson=>parse( json )->get( '/archive_download_url' ).
 
-      CATCH zcx_ajson_error INTO DATA(error).
+      CATCH zcx_abapgit_ajson_error INTO DATA(error).
         zcx_abapgit_exception=>raise_with_text( error ).
     ENDTRY.
 
@@ -321,7 +321,7 @@ CLASS controller IMPLEMENTATION.
 
     http_client->request->set_header_field(
         name  = '~request_uri'
-        value = zcl_abapgit_url=>path( i_url ) && zcl_abapgit_url=>name( i_url ) ).
+        value = zcl_abapgit_url=>path_name( i_url ) ).
     http_client->request->set_method( if_http_entity=>co_request_method_get ).
 
     http_client->send(
@@ -385,7 +385,7 @@ CLASS controller IMPLEMENTATION.
     DATA(url) = |https://api.github.com/repos/abapGit/abapGit/actions/artifacts|.
 
     TRY.
-        DATA(json) = zcl_ajson=>parse( zcl_abapgit_convert=>xstring_to_string_utf8( fetch_from_url_auth( url ) ) ).
+        DATA(json) = zcl_abapgit_ajson=>parse( zcl_abapgit_convert=>xstring_to_string_utf8( fetch_from_url_auth( url ) ) ).
 
         DATA(json_artifacts) = json->members( '/artifacts' ).
 
@@ -418,7 +418,7 @@ CLASS controller IMPLEMENTATION.
 
         art_id = VALUE #( selected[ 1 ]-id DEFAULT art_id ).
 
-      CATCH zcx_ajson_error zcx_abapgit_exception INTO DATA(error).
+      CATCH zcx_abapgit_ajson_error zcx_abapgit_exception INTO DATA(error).
         MESSAGE error TYPE 'S' DISPLAY LIKE 'E'.
     ENDTRY.
 
