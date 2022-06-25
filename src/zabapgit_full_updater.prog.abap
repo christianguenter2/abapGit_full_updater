@@ -238,30 +238,9 @@ CLASS controller IMPLEMENTATION.
 
   METHOD get_source_from_zip.
 
-    DATA(zip) = NEW cl_abap_zip( ).
+    DATA(files) = zcl_abapgit_zip=>load( i_zip ).
 
-    zip->load(
-      EXPORTING
-        zip             = i_zip
-      EXCEPTIONS
-        zip_parse_error = 1
-        OTHERS          = 2 ).
-    IF sy-subrc <> 0.
-      zcx_abapgit_exception=>raise_t100( ).
-    ENDIF.
-
-    zip->get(
-      EXPORTING
-        index   = 1
-      IMPORTING
-        content = result
-      EXCEPTIONS
-        zip_index_error         = 1
-        zip_decompression_error = 2
-        OTHERS                  = 3 ).
-    IF sy-subrc <> 0.
-      zcx_abapgit_exception=>raise( |ZIP error: { sy-subrc }| ).
-    ENDIF.
+    result = VALUE #( files[ 1 ]-data OPTIONAL ).
 
   ENDMETHOD.
 
