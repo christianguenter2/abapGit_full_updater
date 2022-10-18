@@ -8,7 +8,7 @@ REPORT zabapgit_full_updater.
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
 PARAMETERS:
   text TYPE abap_bool RADIOBUTTON GROUP r1 DEFAULT 'X' USER-COMMAND t,
-  url  TYPE string LOWER CASE DEFAULT 'https://raw.githubusercontent.com/abapGit/build/main/zabapgit.abap'.
+  url  TYPE string LOWER CASE DEFAULT 'https://raw.githubusercontent.com/abapGit/build/main/zabapgit_standalone.prog.abap'.
 
 SELECTION-SCREEN SKIP.
 
